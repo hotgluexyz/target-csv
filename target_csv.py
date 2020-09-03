@@ -18,12 +18,14 @@ import singer
 
 logger = singer.get_logger()
 
+
 def emit_state(state):
     if state is not None:
         line = json.dumps(state)
         logger.debug('Emitting state {}'.format(line))
         sys.stdout.write("{}\n".format(line))
         sys.stdout.flush()
+
 
 def flatten(d, parent_key='', sep='__'):
     items = []
@@ -34,8 +36,9 @@ def flatten(d, parent_key='', sep='__'):
         else:
             items.append((new_key, str(v) if type(v) is list else v))
     return dict(items)
-        
-def persist_messages(delimiter, quotechar, messages, destination_path):
+
+
+def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers):
     state = None
     schemas = {}
     key_properties = {}
@@ -64,15 +67,19 @@ def persist_messages(delimiter, quotechar, messages, destination_path):
 
             flattened_record = flatten(o['record'])
 
-            if o['stream'] not in headers and not file_is_empty:
-                with open(filename, 'r') as csvfile:
-                    reader = csv.reader(csvfile,
-                                        delimiter=delimiter,
-                                        quotechar=quotechar)
-                    first_line = next(reader)
-                    headers[o['stream']] = first_line if first_line else flattened_record.keys()
+            if fixed_headers is not None:
+                if o['stream'] not in headers:
+                    headers[o['stream']] = fixed_headers[o['stream']]
             else:
-                headers[o['stream']] = flattened_record.keys()
+                if o['stream'] not in headers and not file_is_empty:
+                    with open(filename, 'r') as csvfile:
+                        reader = csv.reader(csvfile,
+                                            delimiter=delimiter,
+                                            quotechar=quotechar)
+                        first_line = next(reader)
+                        headers[o['stream']] = first_line if first_line else flattened_record.keys()
+                else:
+                    headers[o['stream']] = flattened_record.keys()
 
             with open(filename, 'a') as csvfile:
                 writer = csv.DictWriter(csvfile,
@@ -141,7 +148,8 @@ def main():
     state = persist_messages(config.get('delimiter', ','),
                              config.get('quotechar', '"'),
                              input_messages,
-                             config.get('destination_path', ''))
+                             config.get('destination_path', ''),
+                             config.get('fixed_headers'))
 
     emit_state(state)
     logger.debug("Exiting normally")
