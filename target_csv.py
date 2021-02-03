@@ -65,7 +65,8 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             filename = os.path.expanduser(os.path.join(destination_path, filename))
             file_is_empty = (not os.path.isfile(filename)) or os.stat(filename).st_size == 0
 
-            flattened_record = flatten(o['record'])
+            # flattened_record = flatten(o['record'])
+            flattened_record = o['record']
 
             if fixed_headers is not None:
                 if o['stream'] not in headers:
