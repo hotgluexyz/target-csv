@@ -68,7 +68,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             # flattened_record = flatten(o['record'])
             flattened_record = o['record']
 
-            if fixed_headers is not None:
+            if fixed_headers is not None and o['stream'] in fixed_headers:
                 if o['stream'] not in headers:
                     headers[o['stream']] = fixed_headers[o['stream']]
             else:
