@@ -41,10 +41,10 @@ def flatten(d, parent_key='', sep='__'):
 def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers, filename_include_date):
     state = None
     schemas = {}
+    streamname_to_filename = {}
     key_properties = {}
     headers = {}
     validators = {}
-
     now = datetime.now().strftime('%Y%m%dT%H%M%S')
 
     for message in messages:
@@ -61,12 +61,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
 
             validators[o['stream']].validate(o['record'])
 
-            if(filename_include_date == True):
-                filename = o['stream'] + '-' + now + '.csv'
-            else: 
-                filename = o['stream'] + '.csv'
-
-            filename = os.path.expanduser(os.path.join(destination_path, filename))
+            filename = generate_filename(filename_include_date, destination_path, o['stream'], ".csv", now)
             file_is_empty = (not os.path.isfile(filename)) or os.stat(filename).st_size == 0
 
             # flattened_record = flatten(o['record'])
@@ -108,8 +103,9 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             validators[stream] = Draft4Validator(o['schema'])
             key_properties[stream] = o['key_properties']
             #If a stream sends its schema twice this will be an issue, but this is less likely with this usecase
+            filename = generate_filename(filename_include_date, destination_path, stream, ".csv", now)
+
             if(filename_include_date == False):
-                filename = o['stream'] + '.csv'
                 #Highly likely this file already exists. 
                 if os.path.exists(filename):
                     os.remove(filename)
@@ -119,6 +115,14 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
 
     return state
 
+def generate_filename(filename_include_date, destination_path, streamname, fileending, nowdatetime):
+    if(filename_include_date == True):
+        filename = streamname + '-' + nowdatetime + fileending
+    else: 
+        filename = streamname + fileending
+    
+    filename = os.path.expanduser(os.path.join(destination_path, filename))
+    return filename
 
 def send_usage_stats():
     try:
