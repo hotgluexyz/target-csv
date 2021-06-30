@@ -1,5 +1,6 @@
 {
     "delimiter": "\t",
     "quotechar": "'",
-    "destination_path": ""
+    "destination_path": "",
+    "filename_include_date": true 
 }

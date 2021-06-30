@@ -38,7 +38,7 @@ def flatten(d, parent_key='', sep='__'):
     return dict(items)
 
 
-def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers):
+def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers, filename_include_date):
     state = None
     schemas = {}
     key_properties = {}
@@ -61,7 +61,11 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
 
             validators[o['stream']].validate(o['record'])
 
-            filename = o['stream'] + '-' + now + '.csv'
+            if(filename_include_date == True):
+                filename = o['stream'] + '-' + now + '.csv'
+            else: 
+                filename = o['stream'] + '.csv'
+
             filename = os.path.expanduser(os.path.join(destination_path, filename))
             file_is_empty = (not os.path.isfile(filename)) or os.stat(filename).st_size == 0
 
@@ -72,6 +76,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 if o['stream'] not in headers:
                     headers[o['stream']] = fixed_headers[o['stream']]
             else:
+                #Records can come in from different streams out of order. If we already have a file written open the file back up and continue where we left off
                 if o['stream'] not in headers and not file_is_empty:
                     with open(filename, 'r') as csvfile:
                         reader = csv.reader(csvfile,
@@ -102,6 +107,12 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             schemas[stream] = o['schema']
             validators[stream] = Draft4Validator(o['schema'])
             key_properties[stream] = o['key_properties']
+            #If a stream sends its schema twice this will be an issue, but this is less likely with this usecase
+            if(filename_include_date == False):
+                filename = o['stream'] + '.csv'
+                #Highly likely this file already exists. 
+                if os.path.exists(filename):
+                    os.remove(filename)
         else:
             logger.warning("Unknown message type {} in message {}"
                             .format(o['type'], o))
@@ -150,7 +161,9 @@ def main():
                              config.get('quotechar', '"'),
                              input_messages,
                              config.get('destination_path', ''),
-                             config.get('fixed_headers'))
+                             config.get('fixed_headers'),
+                             config.get('filename_include_date', True),
+                             )
 
     emit_state(state)
     logger.debug("Exiting normally")
