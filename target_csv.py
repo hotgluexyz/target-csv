@@ -5,6 +5,7 @@ import io
 import os
 import sys
 import json
+import simplejson
 import csv
 import threading
 import http.client
@@ -91,7 +92,9 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 if file_is_empty:
                     writer.writeheader()
 
-                writer.writerow(flattened_record)
+                # We use simplejson to re-serialize the data to avoid formatting issues in the CSV
+                r = simplejson.dumps(flattened_record)
+                writer.writerow(simplejson.loads(r))
 
             state = None
         elif message_type == 'STATE':
