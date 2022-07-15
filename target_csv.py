@@ -5,6 +5,7 @@ import io
 import os
 import sys
 import json
+import simplejson
 import csv
 import threading
 import http.client
@@ -38,7 +39,7 @@ def flatten(d, parent_key='', sep='__'):
     return dict(items)
 
 
-def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers):
+def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers, validate):
     state = None
     schemas = {}
     key_properties = {}
@@ -58,8 +59,8 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             if o['stream'] not in schemas:
                 raise Exception("A record for stream {}"
                                 "was encountered before a corresponding schema".format(o['stream']))
-
-            validators[o['stream']].validate(o['record'])
+            if validate:
+                validators[o['stream']].validate(o['record'])
 
             filename = o['stream'] + '-' + now + '.csv'
             filename = os.path.expanduser(os.path.join(destination_path, filename))
@@ -82,7 +83,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 else:
                     headers[o['stream']] = flattened_record.keys()
 
-            with open(filename, 'a') as csvfile:
+            with open(filename, 'a', newline='') as csvfile:
                 writer = csv.DictWriter(csvfile,
                                         headers[o['stream']],
                                         extrasaction='ignore',
@@ -91,7 +92,9 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 if file_is_empty:
                     writer.writeheader()
 
-                writer.writerow(flattened_record)
+                # We use simplejson to re-serialize the data to avoid formatting issues in the CSV
+                r = simplejson.dumps(flattened_record)
+                writer.writerow(simplejson.loads(r))
 
             state = None
         elif message_type == 'STATE':
@@ -150,7 +153,8 @@ def main():
                              config.get('quotechar', '"'),
                              input_messages,
                              config.get('destination_path', ''),
-                             config.get('fixed_headers'))
+                             config.get('fixed_headers'),
+                             config.get('validate', True))
 
     emit_state(state)
     logger.debug("Exiting normally")
