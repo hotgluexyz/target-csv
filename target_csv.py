@@ -13,6 +13,7 @@ import urllib
 from datetime import datetime
 import collections
 import pkg_resources
+import pathlib
 
 from jsonschema.validators import Draft4Validator
 import singer
@@ -95,6 +96,27 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 # We use simplejson to re-serialize the data to avoid formatting issues in the CSV
                 r = simplejson.dumps(flattened_record)
                 writer.writerow(simplejson.loads(r))
+
+            job_metrics_file_path = os.path.expanduser(os.path.join(destination_path, "job_metrics.json"))
+
+            if not os.path.isfile(job_metrics_file_path):
+                pathlib.Path(job_metrics_file_path).touch()
+
+            with open(job_metrics_file_path, 'r+') as job_metrics_file:
+                content = dict()
+
+                try:
+                    content = json.loads(job_metrics_file.read())
+                except Exception:
+                    pass
+
+                if not content.get('recordCount'):
+                    content['recordCount'] = dict()
+
+                content['recordCount'][o['stream']] = content['recordCount'].get(o['stream'], 0) + 1
+
+                job_metrics_file.seek(0)
+                job_metrics_file.write(json.dumps(content))
 
             state = None
         elif message_type == 'STATE':
