@@ -40,7 +40,7 @@ def flatten(d, parent_key='', sep='__'):
     return dict(items)
 
 
-def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers, validate):
+def persist_messages(filename, delimiter, quotechar, messages, destination_path, fixed_headers, validate):
     state = None
     schemas = {}
     key_properties = {}
@@ -63,7 +63,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             if validate:
                 validators[o['stream']].validate(o['record'])
 
-            filename = o['stream'] + '-' + now + '.csv'
+            filename = filename + '.csv' if filename else o['stream'] + '-' + now + '.csv'
             filename = os.path.expanduser(os.path.join(destination_path, filename))
             file_is_empty = (not os.path.isfile(filename)) or os.stat(filename).st_size == 0
 
@@ -129,7 +129,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
             key_properties[stream] = o['key_properties']
         else:
             logger.warning("Unknown message type {} in message {}"
-                            .format(o['type'], o))
+                           .format(o['type'], o))
 
     return state
 
@@ -173,6 +173,7 @@ def main():
     input_messages = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8')
     state = persist_messages(config.get('delimiter', ','),
                              config.get('quotechar', '"'),
+                             config.get('filename', ''),
                              input_messages,
                              config.get('destination_path', ''),
                              config.get('fixed_headers'),
