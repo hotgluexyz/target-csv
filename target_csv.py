@@ -84,12 +84,16 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 else:
                     headers[o['stream']] = flattened_record.keys()
 
+            args = {}
+            if sys.version_info.major == 3 and sys.version_info.minor == 10:
+                    args = {"escapechar": '\\'}
             with open(filename, 'a') as csvfile:
                 writer = csv.DictWriter(csvfile,
                                         headers[o['stream']],
                                         extrasaction='ignore',
                                         delimiter=delimiter,
-                                        quotechar=quotechar)
+                                        quotechar=quotechar,
+                                        **args)
                 if file_is_empty:
                     writer.writeheader()
 
