@@ -84,21 +84,20 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 else:
                     headers[o['stream']] = flattened_record.keys()
 
-            args = {}
-            if sys.version_info.major == 3 and sys.version_info.minor == 10:
-                    args = {"escapechar": '\\'}
             with open(filename, 'a') as csvfile:
                 writer = csv.DictWriter(csvfile,
                                         headers[o['stream']],
                                         extrasaction='ignore',
                                         delimiter=delimiter,
                                         quotechar=quotechar,
-                                        **args)
+                                        )
                 if file_is_empty:
                     writer.writeheader()
 
                 # We use simplejson to re-serialize the data to avoid formatting issues in the CSV
                 r = simplejson.dumps(flattened_record)
+                # if \\u0000 is being used as line terminator, replace with \n
+                r = r.replace("\\u0000", "\\n")
                 writer.writerow(simplejson.loads(r))
 
             job_metrics_file_path = os.path.expanduser(os.path.join(destination_path, "job_metrics.json"))
