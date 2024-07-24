@@ -62,6 +62,10 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                                 "was encountered before a corresponding schema".format(o['stream']))
             if validate:
                 validators[o['stream']].validate(o['record'])
+            
+            # replace all empty spaces and "/" in the stream name
+            stream = o['stream'].replace("/", "_").replace(" ", "_")
+            o['stream'] = stream
 
             filename = o['stream'] + '-' + now + '.csv'
             filename = os.path.expanduser(os.path.join(destination_path, filename))
@@ -83,9 +87,6 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                         headers[o['stream']] = first_line if first_line else flattened_record.keys()
                 else:
                     headers[o['stream']] = flattened_record.keys()
-
-            # replace all spaces with underscores
-            filename = filename.replace(" ", "_")
 
             with open(filename, 'a') as csvfile:
                 writer = csv.DictWriter(csvfile,
