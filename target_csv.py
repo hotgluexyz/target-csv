@@ -64,7 +64,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 validators[o['stream']].validate(o['record'])
             
             # replace all empty spaces and "/" in the stream name
-            stream = o['stream'].replace("/", "_").replace(" ", "_")
+            stream = o['stream'].replace("/", "_")
             o['stream'] = stream
 
             filename = o['stream'] + '-' + now + '.csv'
