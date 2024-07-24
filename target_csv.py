@@ -84,6 +84,9 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 else:
                     headers[o['stream']] = flattened_record.keys()
 
+            # replace all spaces with underscores
+            filename = filename.replace(" ", "_")
+
             with open(filename, 'a') as csvfile:
                 writer = csv.DictWriter(csvfile,
                                         headers[o['stream']],
@@ -97,7 +100,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                 # We use simplejson to re-serialize the data to avoid formatting issues in the CSV
                 r = simplejson.dumps(flattened_record)
                 # if \\u0000 is being used as line terminator, replace with \n
-                r = r.replace("\\u0000", "\\n")
+                # r = r.replace("\\u0000", "\\n")
                 writer.writerow(simplejson.loads(r))
 
             job_metrics_file_path = os.path.expanduser(os.path.join(destination_path, "job_metrics.json"))
