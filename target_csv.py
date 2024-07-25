@@ -62,6 +62,10 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
                                 "was encountered before a corresponding schema".format(o['stream']))
             if validate:
                 validators[o['stream']].validate(o['record'])
+            
+            # replace all empty spaces and "/" in the stream name
+            stream = o['stream'].replace("/", "_")
+            o['stream'] = stream
 
             filename = o['stream'] + '-' + now + '.csv'
             filename = os.path.expanduser(os.path.join(destination_path, filename))
