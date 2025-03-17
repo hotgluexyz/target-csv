@@ -228,7 +228,6 @@ fn persist_messages(
                         continue;
                     }
                 };
-                debug!("Setting state to {:?}", state_message.value);
                 state = Some(state_message.value);
             }
             "SCHEMA" => {
