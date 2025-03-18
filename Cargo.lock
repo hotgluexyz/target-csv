@@ -1575,6 +1575,7 @@ dependencies = [
  "env_logger",
  "jsonschema",
  "log",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",
