@@ -52,6 +52,10 @@ struct StateMessage {
 
 // Custom format validator for date-time that accepts both formats with and without timezone
 fn validate_datetime(value: &str) -> bool {
+    // Accept empty strings
+    if value.is_empty() {
+        return true;
+    }
     // Regex for ISO 8601 date-time with optional timezone
     let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$").unwrap();
     re.is_match(value)
@@ -77,6 +81,7 @@ fn persist_messages(
     let mut state = None;
     let mut schemas = HashMap::new();
     let mut validators: HashMap<String, JSONSchema> = HashMap::new();
+    let mut date_time_fields: HashMap<String, Vec<String>> = HashMap::new();
 
     // Cache CSV writers and headers per stream
     let mut writers: HashMap<String, Writer<File>> = HashMap::new();
@@ -210,7 +215,18 @@ fn persist_messages(
                     if let Value::Object(ref obj) = record_message.record {
                         for header in stream_headers {
                             let value_str = match obj.get(header) {
-                                Some(Value::String(s)) => s.clone(),
+                                Some(Value::String(s)) => {
+                                    // Check if this is a date-time field and the value is empty
+                                    if let Some(date_time_fields_for_stream) = date_time_fields.get(&stream) {
+                                        if date_time_fields_for_stream.contains(header) && s.is_empty() {
+                                            String::new() // Empty string for null value
+                                        } else {
+                                            s.clone()
+                                        }
+                                    } else {
+                                        s.clone()
+                                    }
+                                }
                                 Some(Value::Null) | None => String::new(),
                                 Some(v) => v.to_string().replace("\\u0000", "\\n"),
                             };
@@ -239,7 +255,7 @@ fn persist_messages(
                 state = Some(state_message.value);
             }
             "SCHEMA" => {
-                let schema_message: SchemaMessage = match serde_json::from_value(message_value) {
+                let schema_message: SchemaMessage = match serde_json::from_value(message_value.clone()) {
                     Ok(m) => m,
                     Err(e) => {
                         error!("Failed to parse SCHEMA message: {}", e);
@@ -249,6 +265,27 @@ fn persist_messages(
 
                 let stream = schema_message.stream.replace("/", "_");
                 schemas.insert(stream.clone(), schema_message.schema.clone());
+
+                // Extract date-time fields from schema
+                if let Some(properties) = schema_message.schema.get("properties") {
+                    if let Some(props) = properties.as_object() {
+                        let mut date_time_fields_for_stream = Vec::new();
+                        for (field_name, field_schema) in props {
+                            if let Some(field_type) = field_schema.get("type") {
+                                if field_type == "string" {
+                                    if let Some(format) = field_schema.get("format") {
+                                        if format == "date-time" {
+                                            date_time_fields_for_stream.push(field_name.clone());
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if !date_time_fields_for_stream.is_empty() {
+                            date_time_fields.insert(stream.clone(), date_time_fields_for_stream);
+                        }
+                    }
+                }
 
                 if validate {
                     let compiled = match JSONSchema::options()
