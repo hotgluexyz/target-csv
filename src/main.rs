@@ -125,7 +125,7 @@ fn persist_messages(
 
         match message_type.as_str() {
             "RECORD" => {
-                let record_message: RecordMessage = match serde_json::from_value(message_value.clone()) {
+                let record_message: RecordMessage = match serde_json::from_value(message_value) {
                     Ok(m) => m,
                     Err(e) => {
                         error!("Failed to parse RECORD message: {}", e);
@@ -230,6 +230,22 @@ fn persist_messages(
                     }
 
                     *record_counts.entry(stream.clone()).or_insert(0) += 1;
+
+                    // Write job metrics after each record
+                    let metrics_path = dest_path.join("job_metrics.json");
+                    let mut metrics = HashMap::new();
+                    let mut record_count_value = Map::new();
+                    for (stream, count) in &record_counts {
+                        record_count_value.insert(stream.clone(), json!(count));
+                    }
+                    metrics.insert("recordCount".to_string(), Value::Object(record_count_value));
+                    if let Ok(file) = File::create(&metrics_path) {
+                        if let Err(e) = serde_json::to_writer(file, &metrics) {
+                            error!("Failed to write job metrics: {}", e);
+                        }
+                    } else {
+                        error!("Failed to create job metrics file");
+                    }
                 }
             }
             "STATE" => {
@@ -283,22 +299,6 @@ fn persist_messages(
         if let Err(e) = writer.flush() {
             error!("Failed to flush writer: {}", e);
         }
-    }
-
-    // Write aggregated metrics once.
-    let metrics_path = dest_path.join("job_metrics.json");
-    let mut metrics = HashMap::new();
-    let mut record_count_value = Map::new();
-    for (stream, count) in record_counts {
-        record_count_value.insert(stream, json!(count));
-    }
-    metrics.insert("recordCount".to_string(), Value::Object(record_count_value));
-    if let Ok(file) = File::create(&metrics_path) {
-        if let Err(e) = serde_json::to_writer(file, &metrics) {
-            error!("Failed to write job metrics: {}", e);
-        }
-    } else {
-        error!("Failed to create job metrics file");
     }
 
     state
