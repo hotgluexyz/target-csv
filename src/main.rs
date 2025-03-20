@@ -56,8 +56,8 @@ fn validate_datetime(value: &str) -> bool {
     if value.is_empty() {
         return true;
     }
-    // Regex for ISO 8601 date-time with optional timezone
-    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})?$").unwrap();
+    // Regex for ISO 8601 date-time with optional timezone (accepts both +HH:MM and +HHMM formats)
+    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$").unwrap();
     re.is_match(value)
 }
 
