@@ -5,7 +5,7 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::exit;
 
-use chrono::Utc;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::{App, Arg};
 use csv::{QuoteStyle, Writer, WriterBuilder};
 use jsonschema::{Draft, JSONSchema};
@@ -15,6 +15,31 @@ use log::{debug, error, warn};
 
 // Initialize env_logger to target stderr.
 use env_logger;
+
+// Custom format validator for date-time using chrono
+fn validate_datetime(value: &str) -> bool {
+    // Accept empty strings
+    if value.is_empty() {
+        return true;
+    }
+
+    // Try parsing with timezone first (most common format)
+    if DateTime::parse_from_rfc3339(value).is_ok() {
+        return true;
+    }
+
+    // Try parsing without timezone
+    if NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f").is_ok() {
+        return true;
+    }
+
+    // Try parsing with timezone in alternative format
+    if DateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f%z").is_ok() {
+        return true;
+    }
+
+    false
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Config {
@@ -261,6 +286,7 @@ fn persist_messages(
                 if validate {
                     let compiled = match JSONSchema::options()
                         .with_draft(Draft::Draft4)
+                        .with_format("date-time", validate_datetime)
                         .compile(&schema_message.schema)
                     {
                         Ok(schema) => schema,
