@@ -12,7 +12,6 @@ use jsonschema::{Draft, JSONSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use log::{debug, error, warn};
-use regex::Regex;
 
 // Initialize env_logger to target stderr.
 use env_logger;
@@ -48,17 +47,6 @@ struct StateMessage {
     #[serde(rename = "type")]
     message_type: String,
     value: Value,
-}
-
-// Custom format validator for date-time that accepts both formats with and without timezone
-fn validate_datetime(value: &str) -> bool {
-    // Accept empty strings
-    if value.is_empty() {
-        return true;
-    }
-    // Regex for ISO 8601 date-time with optional timezone (accepts both +HH:MM and +HHMM formats)
-    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$").unwrap();
-    re.is_match(value)
 }
 
 fn emit_state(state: &Option<Value>) {
@@ -273,7 +261,6 @@ fn persist_messages(
                 if validate {
                     let compiled = match JSONSchema::options()
                         .with_draft(Draft::Draft4)
-                        .with_format("date-time", validate_datetime)
                         .compile(&schema_message.schema)
                     {
                         Ok(schema) => schema,
