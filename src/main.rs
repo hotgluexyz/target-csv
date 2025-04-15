@@ -5,17 +5,41 @@ use std::io::{self, BufRead, BufReader, Write};
 use std::path::Path;
 use std::process::exit;
 
-use chrono::Utc;
+use chrono::{DateTime, NaiveDateTime, Utc};
 use clap::{App, Arg};
 use csv::{QuoteStyle, Writer, WriterBuilder};
 use jsonschema::{Draft, JSONSchema};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use log::{debug, error, warn};
-use regex::Regex;
 
 // Initialize env_logger to target stderr.
 use env_logger;
+
+// Custom format validator for date-time using chrono
+fn validate_datetime(value: &str) -> bool {
+    // Accept empty strings
+    if value.is_empty() {
+        return true;
+    }
+
+    // Try parsing with timezone first (most common format)
+    if DateTime::parse_from_rfc3339(value).is_ok() {
+        return true;
+    }
+
+    // Try parsing without timezone
+    if NaiveDateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f").is_ok() {
+        return true;
+    }
+
+    // Try parsing with timezone in alternative format
+    if DateTime::parse_from_str(value, "%Y-%m-%dT%H:%M:%S%.f%z").is_ok() {
+        return true;
+    }
+
+    false
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Config {
@@ -48,17 +72,6 @@ struct StateMessage {
     #[serde(rename = "type")]
     message_type: String,
     value: Value,
-}
-
-// Custom format validator for date-time that accepts both formats with and without timezone
-fn validate_datetime(value: &str) -> bool {
-    // Accept empty strings
-    if value.is_empty() {
-        return true;
-    }
-    // Regex for ISO 8601 date-time with optional timezone (accepts both +HH:MM and +HHMM formats)
-    let re = Regex::new(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$").unwrap();
-    re.is_match(value)
 }
 
 fn emit_state(state: &Option<Value>) {
