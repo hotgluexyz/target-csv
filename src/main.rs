@@ -53,7 +53,6 @@ struct Config {
     destination_path: Option<String>,
     fixed_headers: Option<HashMap<String, Vec<String>>>,
     validate: Option<bool>,
-    error_if_invalid_record: Option<bool>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -96,7 +95,6 @@ fn persist_messages(
     destination_path: &str,
     fixed_headers: &Option<HashMap<String, Vec<String>>>,
     validate: bool,
-    error_if_invalid_record: bool,
 ) -> Option<Value> {
     let mut state = None;
     let mut schemas = HashMap::new();
@@ -170,10 +168,7 @@ fn persist_messages(
                             for error in errors {
                                 error!("Validation error: {}", error);
                             }
-                            if error_if_invalid_record {
-                                panic!("Record validation failed and errorIfInvalidRecord is true");
-                            }
-                            continue;
+                            panic!("Record validation failed");
                         }
                     }
                 }
@@ -369,7 +364,6 @@ fn main() {
             destination_path: None,
             fixed_headers: None,
             validate: None,
-            error_if_invalid_record: None,
         }
     };
 
@@ -381,7 +375,6 @@ fn main() {
     let destination_path = config.destination_path.as_deref().unwrap_or("");
     let fixed_headers = &config.fixed_headers;
     let validate = config.validate.unwrap_or(true);
-    let error_if_invalid_record = config.error_if_invalid_record.unwrap_or(true);
 
     let state = persist_messages(
         delimiter,
@@ -390,7 +383,6 @@ fn main() {
         destination_path,
         fixed_headers,
         validate,
-        error_if_invalid_record,
     );
 
     emit_state(&state);
