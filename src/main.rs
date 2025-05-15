@@ -38,6 +38,11 @@ fn validate_datetime(value: &str) -> bool {
         return true;
     }
 
+    // Try parsing date only format (YYYY-MM-DD)
+    if NaiveDateTime::parse_from_str(&format!("{}T00:00:00", value), "%Y-%m-%dT%H:%M:%S").is_ok() {
+        return true;
+    }
+
     false
 }
 
@@ -163,7 +168,7 @@ fn persist_messages(
                             for error in errors {
                                 error!("Validation error: {}", error);
                             }
-                            continue;
+                            panic!("Record validation failed");
                         }
                     }
                 }
