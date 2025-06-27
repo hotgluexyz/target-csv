@@ -48,7 +48,9 @@ fn validate_datetime(value: &str) -> bool {
         return true;
     }
 
-    false
+    warn!("Unknown datetime format: {}", value);
+
+    true
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
