@@ -43,7 +43,14 @@ fn validate_datetime(value: &str) -> bool {
         return true;
     }
 
-    false
+    // Try parsing DD/MM/YYYY format
+    if NaiveDateTime::parse_from_str(&format!("{}T00:00:00", value), "%d/%m/%YT%H:%M:%S").is_ok() {
+        return true;
+    }
+
+    warn!("Unknown datetime format: {}", value);
+
+    true
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
