@@ -13,6 +13,26 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use log::{debug, error, warn};
 
+// Custom function to convert JSON to Python-style format
+fn to_python_json(value: &Value) -> String {
+    match value {
+        Value::Null => "None".to_string(),
+        Value::Bool(b) => if *b { "True".to_string() } else { "False".to_string() },
+        Value::Number(n) => n.to_string(),
+        Value::String(s) => format!("'{}'", s.replace("'", "\\'")),
+        Value::Array(arr) => {
+            let elements: Vec<String> = arr.iter().map(to_python_json).collect();
+            format!("[{}]", elements.join(","))
+        },
+        Value::Object(obj) => {
+            let pairs: Vec<String> = obj.iter()
+                .map(|(k, v)| format!("'{}':{}", k, to_python_json(v)))
+                .collect();
+            format!("{{{}}}", pairs.join(","))
+        },
+    }
+}
+
 // Initialize env_logger to target stderr.
 use env_logger;
 
@@ -228,7 +248,10 @@ fn persist_messages(
                             let value_str = match obj.get(header) {
                                 Some(Value::String(s)) => s.clone(),
                                 Some(Value::Null) | None => String::new(),
-                                Some(v) => v.to_string().replace("\\u0000", "\\n"),
+                                Some(v) => {
+                                    // Convert to Python-style JSON format
+                                    to_python_json(v).replace("\\u0000", "\\n")
+                                },
                             };
                             row.push(value_str);
                         }
