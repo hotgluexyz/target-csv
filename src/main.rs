@@ -119,32 +119,28 @@ fn persist_messages(
         let message = match line {
             Ok(msg) => msg,
             Err(e) => {
-                error!("Error reading line: {}", e);
-                continue;
+                panic!("Error reading line: {}", e);
             }
         };
 
         let message_value: Value = match serde_json::from_str(&message) {
             Ok(v) => v,
             Err(e) => {
-                error!("Unable to parse: {}\nError: {}", message, e);
-                continue;
+                panic!("Unable to parse: {}\nError: {}", message, e);
             }
         };
 
         let message_obj = match message_value.as_object() {
             Some(obj) => obj,
             None => {
-                error!("Message is not a valid JSON object");
-                continue;
+                panic!("Message is not a valid JSON object");
             }
         };
 
         let message_type = match message_obj.get("type") {
             Some(Value::String(t)) => t,
             _ => {
-                error!("Message has no type field");
-                continue;
+                panic!("Message has no type field");
             }
         };
 
@@ -153,8 +149,7 @@ fn persist_messages(
                 let record_message: RecordMessage = match serde_json::from_value(message_value) {
                     Ok(m) => m,
                     Err(e) => {
-                        error!("Failed to parse RECORD message: {}", e);
-                        continue;
+                        panic!("Failed to parse RECORD message: {}", e);
                     }
                 };
 
@@ -162,11 +157,7 @@ fn persist_messages(
                 let stream = record_message.stream.replace("/", "_");
 
                 if !schemas.contains_key(&stream) {
-                    error!(
-                        "A record for stream {} was encountered before a corresponding schema",
-                        stream
-                    );
-                    continue;
+                    panic!("A record for stream {} was encountered before a corresponding schema", stream);
                 }
 
                 if validate {
@@ -193,14 +184,12 @@ fn persist_messages(
                         } else if let Value::Object(ref obj) = record_message.record {
                             obj.keys().cloned().collect()
                         } else {
-                            error!("Record is not a valid JSON object");
-                            continue;
+                            panic!("Record is not a valid JSON object");
                         }
                     } else if let Value::Object(ref obj) = record_message.record {
                         obj.keys().cloned().collect()
                     } else {
-                        error!("Record is not a valid JSON object");
-                        continue;
+                        panic!("Record is not a valid JSON object");
                     };
 
                     headers_map.insert(stream.clone(), stream_headers.clone());
@@ -213,8 +202,7 @@ fn persist_messages(
                     {
                         Ok(f) => f,
                         Err(e) => {
-                            error!("Failed to open file {}: {}", file_path.display(), e);
-                            continue;
+                            panic!("Failed to open file {}: {}", file_path.display(), e);
                         }
                     };
 
@@ -226,8 +214,7 @@ fn persist_messages(
 
                     if !file_exists {
                         if let Err(e) = csv_writer.write_record(&stream_headers) {
-                            error!("Failed to write headers: {}", e);
-                            continue;
+                            panic!("Failed to write headers: {}", e);
                         }
                     }
                     writers.insert(stream.clone(), csv_writer);
@@ -246,12 +233,10 @@ fn persist_messages(
                             row.push(value_str);
                         }
                         if let Err(e) = writer.write_record(&row) {
-                            error!("Failed to write record: {}", e);
-                            continue;
+                            panic!("Failed to write record: {}", e);
                         }
                     } else {
-                        error!("Record is not a valid JSON object");
-                        continue;
+                        panic!("Record is not a valid JSON object");
                     }
 
                     *record_counts.entry(stream.clone()).or_insert(0) += 1;
@@ -277,8 +262,7 @@ fn persist_messages(
                 let state_message: StateMessage = match serde_json::from_value(message_value) {
                     Ok(m) => m,
                     Err(e) => {
-                        error!("Failed to parse STATE message: {}", e);
-                        continue;
+                        panic!("Failed to parse STATE message: {}", e);
                     }
                 };
                 state = Some(state_message.value);
@@ -287,8 +271,7 @@ fn persist_messages(
                 let schema_message: SchemaMessage = match serde_json::from_value(message_value) {
                     Ok(m) => m,
                     Err(e) => {
-                        error!("Failed to parse SCHEMA message: {}", e);
-                        continue;
+                        panic!("Failed to parse SCHEMA message: {}", e);
                     }
                 };
 
@@ -303,8 +286,7 @@ fn persist_messages(
                     {
                         Ok(schema) => schema,
                         Err(e) => {
-                            error!("Failed to compile schema for stream {}: {}", stream, e);
-                            continue;
+                            panic!("Failed to compile schema for stream {}: {}", stream, e);
                         }
                     };
                     validators.insert(stream, compiled);
