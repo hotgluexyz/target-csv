@@ -250,10 +250,14 @@ fn persist_messages(
                                 Some(Value::Null) | None => String::new(),
                                 Some(v) => {
                                     // Convert to Python-style JSON format
-                                    to_python_json(v).replace("\\u0000", "\\n")
+                                    to_python_json(v)
                                 },
                             };
-                            row.push(value_str);
+                            // Clean up null bytes and unicode null escapes from the final string
+                            let clean_value = value_str
+                                .replace("\\u0000", "\\n")  // Replace unicode null escape sequences
+                                .replace('\x00', "\n");     // Replace actual null byte characters
+                            row.push(clean_value);
                         }
                         if let Err(e) = writer.write_record(&row) {
                             panic!("Failed to write record: {}", e);
