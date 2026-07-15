@@ -47,7 +47,7 @@ def check_schema_types(schema, path='schema'):
         if isinstance(type_value, list) and any(isinstance(t, list) for t in type_value):
             raise Exception(
                 "Invalid schema at {}: type contains nested list {}. "
-                "Expected a flat list of strings ".format(path, type_value)
+                "Expected a flat list of strings.".format(path, type_value)
             )
         for key, value in schema.items():
             check_schema_types(value, '{}.{}'.format(path, key))
