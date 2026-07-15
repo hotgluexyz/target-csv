@@ -40,6 +40,22 @@ def flatten(d, parent_key='', sep='__'):
     return dict(items)
 
 
+def check_schema_types(schema, path='schema'):
+    """Raise if any 'type' value contains nested lists (invalid JSON Schema)."""
+    if isinstance(schema, dict):
+        type_value = schema.get('type')
+        if isinstance(type_value, list) and any(isinstance(t, list) for t in type_value):
+            raise Exception(
+                "Invalid schema at {}: type contains nested list {}. "
+                "Expected a flat list of strings.".format(path, type_value)
+            )
+        for key, value in schema.items():
+            check_schema_types(value, '{}.{}'.format(path, key))
+    elif isinstance(schema, list):
+        for i, item in enumerate(schema):
+            check_schema_types(item, '{}[{}]'.format(path, i))
+
+
 def persist_messages(delimiter, quotechar, messages, destination_path, fixed_headers, validate):
     state = None
     schemas = {}
@@ -132,6 +148,7 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
         elif message_type == 'SCHEMA':
             stream = o['stream']
             schemas[stream] = o['schema']
+            check_schema_types(o['schema'], 'schema (stream={!r})'.format(stream))
             validators[stream] = Draft4Validator(o['schema'])
             key_properties[stream] = o['key_properties']
         else:
