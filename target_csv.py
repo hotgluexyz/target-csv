@@ -12,8 +12,12 @@ import http.client
 import urllib
 from datetime import datetime
 import collections
-import pkg_resources
 import pathlib
+
+try:
+    import pkg_resources
+except ModuleNotFoundError:  # Python 3.14 no longer bundles pkg_resources.
+    pkg_resources = None
 
 from jsonschema.validators import Draft4Validator
 import singer
@@ -143,7 +147,11 @@ def persist_messages(delimiter, quotechar, messages, destination_path, fixed_hea
 
 def send_usage_stats():
     try:
-        version = pkg_resources.get_distribution('target-csv').version
+        if pkg_resources is None:
+            from importlib.metadata import version as distribution_version
+            version = distribution_version('target-csv')
+        else:
+            version = pkg_resources.get_distribution('target-csv').version
         conn = http.client.HTTPConnection('collector.singer.io', timeout=10)
         conn.connect()
         params = {
